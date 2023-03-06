@@ -13,11 +13,17 @@ import {
 import { TypedRequestBody, TypedResponse } from "./interfaces/express.interface"
 import { PresetsEnum } from "./interfaces/presets.enum"
 import { segmenterChannelCreate, segmenterKmpUrl, setupSegmenterTrack } from "./segmenter"
+import bodyParser from "body-parser"
 
 dotenv.config()
 
 const app: Express = express()
 const port = process.env.PORT || 3000
+app.use(bodyParser.json())
+
+if (!process.env.WEBAPP_API) {
+	throw new Error("WEBAPP_API env variable is not set")
+}
 
 function parseMpegtsStreamId(streamId: string): { channelId: string; preset: PresetsEnum; streamKey: string } {
 	const parsedStreamId = Buffer.from(streamId, "base64").toString("utf8")
@@ -27,8 +33,8 @@ function parseMpegtsStreamId(streamId: string): { channelId: string; preset: Pre
 	let channelId: string
 	let preset: PresetsEnum
 
-	if (rawChannelId.startsWith("lls_")) {
-		channelId = rawChannelId.replace("lls_", "")
+	if (rawChannelId.startsWith("ll_")) {
+		channelId = rawChannelId.replace("ll_", "")
 		preset = PresetsEnum.LOW_LATENCY
 	} else {
 		channelId = rawChannelId
@@ -54,16 +60,30 @@ async function handleConnect(body: ControllerRequestConnect): Promise<Controller
 		}
 
 		if (!channel_id || !preset || !stream_key) {
-			throw new Error("Invalid stream id")
+			throw new Error("[Connect] Invalid stream id")
 		}
 
-		// TODO: Add logic to handle connect event
+		const checkValidKeyResp = await fetch(`${process.env.WEBAPP_API}/api/srt/check-key`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify({
+				channel_id,
+				stream_key
+			})
+		})
+
+		if (!checkValidKeyResp.ok) {
+			throw new Error("[Connect] Invalid stream key")
+		}
 
 		return {
 			code: "ok",
 			message: "Channel created"
 		}
 	} catch (error) {
+		console.error(error)
 		return {
 			code: "error",
 			message: "Error while parsing stream id"
@@ -87,7 +107,7 @@ async function handlePublish(body: ControllerRequestPublish): Promise<Controller
 		}
 
 		if (!channel_id || !preset || !stream_key) {
-			throw new Error("Invalid stream id")
+			throw new Error("[Publish] Invalid stream id")
 		}
 
 		const track_id = `${media_info.media_type}_${preset}`
@@ -107,6 +127,7 @@ async function handlePublish(body: ControllerRequestPublish): Promise<Controller
 			]
 		}
 	} catch (error) {
+		console.error(error)
 		return {
 			code: "error",
 			message: "Error while parsing stream id"
@@ -121,29 +142,34 @@ function handleRepublish(_body: ControllerRequestRepublish): ControllerRequestRe
 	}
 }
 
-app.get(
+app.post(
 	"/controller",
 	async (
 		req: TypedRequestBody<ControllerRequest>,
 		res: TypedResponse<ControllerRequestResponse | { code: "ok" | "error"; message: string }>
 	) => {
-		const { event_type } = req.body
+		try {
+			const { event_type } = req.body
 
-		switch (event_type) {
-			case "connect":
-				return res.json(await handleConnect(req.body))
-			case "publish":
-				return res.json(await handlePublish(req.body))
-			case "republish":
-				return res.json(handleRepublish(req.body))
-			case "unpublish":
-				return res.json({ code: "ok", message: "" })
+			switch (event_type) {
+				case "connect":
+					return res.json(await handleConnect(req.body))
+				case "publish":
+					return res.json(await handlePublish(req.body))
+				case "republish":
+					return res.json(handleRepublish(req.body))
+				case "unpublish":
+					return res.json({ code: "ok", message: "" })
+			}
+		} catch (error) {
+			console.error("[Controller] Error while handling request", error)
+			return res.json({ code: "error", message: "Error while handling request" })
 		}
 	}
 )
 
 app.get("/", (req: Request, res: Response) => {
-	res.send("Express + TypeScript Server")
+	res.send("Controller is running")
 })
 
 app.listen(port, () => {

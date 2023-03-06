@@ -7,20 +7,25 @@ services:
       dockerfile: Dockerfile
 
     container_name: srt-server
-    restart: always
+    restart: unless-stopped
     ports:
       - 8080:8080/udp
-      - 8081:8081
-      - 8082:8082/udp
       - 8000:80
     networks:
       - srt
-  php:
-    image: php:fpm-alpine
+
+  express:
+    build:
+      context: ./express
+      dockerfile: Dockerfile
+
+    container_name: express
+    restart: unless-stopped
+    environment:
+      - SEGMENTER_KMP_API=srt-server:8001
+      - WEBAPP_API=https://piquetdestream.fly.io
     networks:
       - srt
-    volumes:
-      - ./nginx/controller.php:/opt/media-framework/conf/controller.php
 
 networks:
   srt:

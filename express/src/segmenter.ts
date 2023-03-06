@@ -4,7 +4,7 @@ dotenv.config()
 
 export const segmenterKmpPort = process.env.SEGMENTER_KMP_PORT || 8003
 export const segmenterKmpUrl = `kmp://${process.env.SEGMENTER_KMP_HOST || "127.0.0.1"}:${segmenterKmpPort}`
-export const segmenterKmpApiUrl = `http://${process.env.SEGMENTER_KMP_HOST || "127.0.0.1"}/api/live`
+export const segmenterKmpApiUrl = `http://${process.env.SEGMENTER_KMP_API || "127.0.0.1"}/api/live`
 export const rtmpOutKmpUrl = `kmp://${process.env.RTMP_OUT_KMP_HOST || "127.0.0.1"}:${
 	process.env.RTMP_OUT_KMP_PORT || 8005
 }`
@@ -16,6 +16,7 @@ export async function segmenterChannelCreate(channelId: string, preset: PresetsE
 			body: JSON.stringify({
 				id: channelId,
 				preset,
+				read: false,
 				initial_segment_index: Math.round(new Date().getTime() / 1000)
 			}),
 			headers: {

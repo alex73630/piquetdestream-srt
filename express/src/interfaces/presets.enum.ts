@@ -1,4 +1,4 @@
 export enum PresetsEnum {
 	MAIN = "main",
-	LOW_LATENCY = "lls"
+	LOW_LATENCY = "ll"
 }

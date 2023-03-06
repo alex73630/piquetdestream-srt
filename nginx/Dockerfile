@@ -34,8 +34,9 @@ RUN /opt/media-framework/conf/build.sh /opt/nginx-srt-module /opt/nginx-stream-p
 # COPY --from=nginx-build /opt/media-framework/conf/nginx.conf /usr/local/nginx/conf/nginx.conf
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf
 COPY controller.php /opt/media-framework/conf/controller.php
-
-RUN mkdir /var/log/nginx
+RUN mkdir -p /var/log/nginx /tmp/store/channel \
+	&& chown -R www-data:www-data /tmp/store/channel \
+	&& chmod -R 777 /tmp/store/channel
 
 WORKDIR /usr/local/nginx
 
