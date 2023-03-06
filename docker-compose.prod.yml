@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  srt-server:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+
+    container_name: srt-server
+    restart: unless-stopped
+    ports:
+      - 8080:8080/udp
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.piquetdestream-srt-server.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.services.piquetdestream-srt-server.loadbalancer.server.port=80"
+    networks:
+      - srt
+
+  express:
+    build:
+      context: ./express
+      dockerfile: Dockerfile
+
+    container_name: express
+    restart: unless-stopped
+    environment:
+      - SEGMENTER_KMP_API=srt-server:8001
+      - WEBAPP_API={WEBAPP_API}
+    networks:
+      - srt
+
+networks:
+  srt:
+    driver: bridge
